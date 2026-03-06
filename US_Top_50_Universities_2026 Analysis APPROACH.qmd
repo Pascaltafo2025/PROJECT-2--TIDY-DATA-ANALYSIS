@@ -1,0 +1,28 @@
+---
+title: "US_Top_50_Universities_2026 Analysis"
+author: "Pascal Hermann Kouogang Tafo"
+format: html
+editor: visual
+---
+
+## INTRODUCTION
+
+This project consists of **analyzing the 2026 US Top 50 Universities dataset** to evaluate the relationship between institutional characteristics, specifically focusing on research impact and employment outcomes.By analyzing research impact and post-graduation employment rates, we **aim to identify performance trends across public and private institutions** for the 2026 academic outlook.
+
+## APPROACH
+
+To conduct the analysis of the dataset, i will implement a structured data science pipeline using the "tidyverse" framework as followed:
+
+1)  **Load** the CSV dataset in R and commit to a GitHub repository ensuring its accessibility at anytime .
+
+2)  **Rename** some variables by removing to standardize naming convention.
+
+3)  **Transform** the dataset into a long format, which allows for more efficient faceted plotting and statistical comparison
+
+4)  Compute descriptive statistics grouped by institution type to establish baselines for **Research_Impact_Score** and **Employment_Rate**.
+
+5)  Construct plots to **compare** research impact distributions between **public** and **private institutions**, identifying variability and outliers.
+
+6)  **Compute a correlation analysis** to determine if higher research impact scores are significantly associated with higher employment rates for each institution type.
+
+## CONCLUSION
