@@ -1,0 +1,26 @@
+---
+title: "Sleep Health & Lifestyle – Exploratory Analysis"
+author: "Pascal Hermann Kouogang Tafo"
+format: html
+editor: visual
+---
+
+## INTRODUCTION
+
+This assignment analyses the **Sleep Health & Lifestyle Dataset** to understand how lifestyle factors such as occupational role and psychological stress could shape two core sleep outcomes: sleep duration and self-rated sleep quality.Understanding these relationships is relevant for us as individual and corporations when creating workplace wellness programs to improve employees performance.
+
+## APPROACH
+
+To conduct the analysis of the dataset, i will implement a structured data science pipeline using the "tidyverse" framework as followed:
+
+1)  Load the CSV dataset in R and commit to an existing GitHub repository ensuring its accessibility at anytime .
+
+2)  Rename some variables by removing "\_" and follow a consistent naming convention.
+
+3)  Transform my dataset from Wide to Long format using the **pivot_longer** function to convert the sleep duration and quality into a single metric column for easier modelling and faceted plotting.
+
+4)  Analyze and Visualize the Correlation between Sleep Duration and Quality related to Occupation. Interpret the result
+
+5)  Analyze and Visualize the Correlation between Sleep Duration and Quality related to Stress Level. Interpret the result
+
+6)  Conclusion
