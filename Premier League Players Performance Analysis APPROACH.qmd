@@ -1,0 +1,40 @@
+---
+title: "Premier League Players Performance Analysis"
+author: "Pascal Hermann Kouogang Tafo"
+format: html
+editor: visual
+---
+
+## INTRODUCTION
+
+This assignment aims to analyze the attacking performance of five elite Premier League players: Haaland, Salah, Palmer, Son, and Saka using the statistics covering goals, assists, and shots split by home and away fixtures at a given period of the season.We seek to identify meaningful patterns in finishing efficiency and goal contribution across different venues(Home/Away).
+
+## APPROACH
+
+To conduct the analysis of the dataset, i will implement a structured data science pipeline using the "tidyverse" framework as followed:
+
+1)  **Create** the data table in R and commit to an existing GitHub repository ensuring its accessibility at anytime.
+
+2)  Reshape the raw data from wide to tidy (long) format using `pivot_longer()`, separating each statistic by venue (Home/Away)
+
+3)  **Shot conversion rate**
+
+<!-- -->
+
+a)  Compare the players **Shot conversion rate** by calculating as total goals divided by total shots\
+b)  visualised as a ranked bar chart using `ggplot2` and a group-average reference line.
+c)  Interpretation
+
+<!-- -->
+
+4)  **Goal contribution comparison (Home vs Away)**
+
+<!-- -->
+
+a)  Compute by summing goals and assists per venue\
+b)  displayed as a grouped bar chart to expose venue-dependent performance patterns
+c)  Interpretation
+
+<!-- -->
+
+5)  CONCLUSION
