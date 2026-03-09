@@ -1,0 +1,200 @@
+---
+title: "Premier League Players Performance Analysis"
+author: "Pascal Hermann Kouogang Tafo"
+format: html
+editor: visual
+---
+
+## INTRODUCTION
+
+This assignment aims to analyze the attacking performance of five elite Premier League players: Haaland, Salah, Palmer, Son, and Saka using the statistics covering goals, assists, and shots split by home and away fixtures at a given period of the season.We seek to identify meaningful patterns in finishing efficiency and goal contribution across different venues(Home/Away).
+
+## APPROACH
+
+To conduct the analysis of the dataset, i will implement a structured data science pipeline using the "tidyverse" framework as followed:
+
+1)  **Create** the data table in R and add to an existing GitHub repository ensuring its accessibility at anytime.
+
+2)  Reshape the raw data from wide to tidy (long) format using `pivot_longer()`, separating each statistic by venue (Home/Away)
+
+3)  **Shot conversion rate**
+
+<!-- -->
+
+a)  Compare the players **Shot conversion rate** by calculating as total goals divided by total shots\
+b)  visualized as a ranked bar chart using `ggplot2` and a group-average reference line.
+c)  Interpretation
+
+<!-- -->
+
+4)  **Goal contribution comparison (Home vs Away)**
+
+<!-- -->
+
+a)  Compute by summing goals and assists per venue\
+b)  displayed as a grouped bar chart to expose venue-dependent performance patterns
+c)  Interpretation
+
+## Load useful package
+
+```{r Load-R-packages}
+
+library(tidyverse)
+
+```
+
+## Create the CSV file of five elite Premier League players stats and Save it in my GitHub
+
+```{r Create-CSV-File}
+
+PL_Players_Stats <- data.frame(
+
+Players = c("HAALAND","SALAH","PALMER", "SON","SAKA"),
+
+Clubs = c("MAN_City", "Liverpool","Chelsea", "Spurs", "Arsenal"),
+
+Goals_Home = c(14, 11, 9, 8, 7),
+
+Goals_Away = c(12, 10, 8, 6, 9),
+
+Assists_Home = c(3, 8, 7, 5, 9),
+
+Assists_Away = c(2, 6, 5, 7, 8),
+
+Shots_Home = c(52, 44, 38, 29, 33),
+
+Shots_Away = c(48, 39, 31, 27, 35)
+
+)
+
+PL_Players_Stats
+
+write.csv(PL_Players_Stats, "PL_Players_Stats.csv", row.names = FALSE)
+
+```
+
+## Reshape the raw data from wide to tidy (long) format
+
+using \`pivot_longer()
+
+```{r}
+
+# Read CSV file from Github repo
+
+url<- "https://raw.githubusercontent.com/Pascaltafo2025/PROJECT-2--TIDY-DATA-ANALYSIS/refs/heads/main/PL_Players_Stats.csv"
+
+PL_Players_Stats <- read.csv(url)
+PL_Players_Stats
+
+# Reshape wide → long using pivot_longer (equivalent to melt in Python)
+
+PL_Players_Stats_long <- PL_Players_Stats %>%
+     pivot_longer(
+      cols      = Goals_Home:Shots_Away,
+    names_to  = c("Stat", "Venue"),
+    names_sep = "_",
+    values_to = "Value"
+      )
+PL_Players_Stats_long
+
+```
+
+## Let's Compute shot conversion rate and Visualization
+
+The shot conversion rate measures a player's clinical finishing by calculating the percentage of shots that result in goals.
+
+```{r}
+
+
+PL_Players_scr <- PL_Players_Stats %>%
+  mutate(
+    Total_Goals    = Goals_Home + Goals_Away,
+    Total_Shots    = Shots_Home + Shots_Away,
+    Conv_Rate_Pct  = round(Total_Goals / Total_Shots * 100, 1)
+  ) %>%
+  arrange(desc(Conv_Rate_Pct))
+
+average_rate <- mean(PL_Players_scr$Conv_Rate_Pct)
+
+
+# Plot
+
+ggplot(PL_Players_scr, aes(x = reorder(Players, -Conv_Rate_Pct), y = Conv_Rate_Pct, fill = Players)) +
+  geom_col(width = 0.55, colour = "white", linewidth = 0.4) +
+  geom_hline(aes(yintercept = average_rate, linetype = "Group Average"),
+             colour = "gold", linewidth = 1.2) +
+  geom_text(aes(label = paste0(Conv_Rate_Pct, "%")),
+            vjust = 0.5, fontface = "bold", size = 4.2) +
+  scale_linetype_manual(name = "", values = "dashed") +
+  scale_fill_manual(values = c(
+    HAALAND = "#6CABDD", SALAH = "#C8102E",
+    PALMER  = "#034694", SON   = "#132257", SAKA = "#EF0107"
+  )) +
+  labs(
+    title    = "Shot Conversion Rate — Premier League Top Attackers",
+    subtitle = paste0("Dashed line = group average (", round(average_rate, 1), "%)"),
+    x        = "Player",
+    y        = "Conversion Rate (%)",
+    fill     = "Player"
+  ) +
+  theme_minimal(base_size = 13) +
+  theme(
+    plot.title    = element_text(face = "bold"),
+    panel.grid.major.x = element_blank(),
+    legend.position = "none"
+  )
+```
+
+## Interpretation
+
+Haaland leads the group with a 26.0% conversion rate, demonstrating why he is one of the most clinical strikers in the league. Salah (25.3%) and Son (25.0%) follow closely, showing consistent efficiency. Interestingly, Saka has the lowest conversion rate among the top 5 at 23.5%, though this still represents elite performance compared to the league average. All five players exhibit remarkably high efficiency, converting approximately 1 out of every 4 shots taken.
+
+## Compute goal contributions and plot the graph for a better visualization
+
+Goal contribution is the sum of goals and assists, providing a holistic view of a player's offensive impact which is why it is an important variabele to look at when analyzing attacking players performance.
+
+```{r}
+
+# Goal contribution metric
+
+PL_Players_gc <- PL_Players_Stats %>%
+  mutate(
+    GC_Home  = Goals_Home  + Assists_Home,
+    GC_Away  = Goals_Away  + Assists_Away,
+    GC_Total = GC_Home + GC_Away
+  ) %>%
+  arrange(desc(GC_Total)) |>
+  pivot_longer(cols = c(GC_Home, GC_Away), names_to = "Venue", values_to = "GC") |>
+  mutate(Venue = recode(Venue, GC_Home = "Home", GC_Away = "Away"))
+
+# Visualization
+
+ggplot(PL_Players_gc, aes(x = reorder(Players, -GC_Total), y = GC, fill = Venue)) +
+  geom_col(position = position_dodge(width = 0.6), width = 0.55,
+           colour = "white", linewidth = 0.4) +
+  geom_text(aes(label = GC), position = position_dodge(width = 0.6),
+            vjust = -0.5, fontface = "bold", size = 4) +
+  scale_fill_manual(values = c(Home = "#38BDF8", Away = "#FB923C")) +
+  labs(
+    title    = "Goal Contributions (Goals + Assists): Home vs Away",
+    subtitle = "Premier League Top Attackers — Current Season",
+    x        = "Player",
+    y        = "Goal Contributions",
+    fill     = "Venue"
+  ) +
+  theme_minimal(base_size = 13) +
+  theme(
+    plot.title         = element_text(face = "bold"),
+    panel.grid.major.x = element_blank()
+  )
+
+
+```
+
+## Interprepretation
+
+The bar graph reveals different degrees of "home-ground advantage". Haaland and Salah are significantly more productive at home, with Salah recording 19 contributions at Anfield(liverpool stadium) compared to 16 away. In contrary, Saka is showing slightly higher productivity away from home (17 contributions) than at the Emirates (16). Finally, Son Heung-min shows perfect consistency, with an identical contribution count of 13 both at home and away, suggesting he is equally effective regardless of the venue.
+
+## CONCLUSION
+
+All five players analyzed demonstrate world-class efficiency, with each maintaining a shot conversion rate above 23%. Haaland stands out as the most clinical finisher in the dataset with a 26% conversion rate, proving that he requires the fewest opportunities to find the back of the net. However, the narrow margin between the highest (Haaland, 26%) and the lowest (Saka, 23.5%) suggests that these players occupy a similar tier of elite performance.That explains why they are the star of their respective team.
