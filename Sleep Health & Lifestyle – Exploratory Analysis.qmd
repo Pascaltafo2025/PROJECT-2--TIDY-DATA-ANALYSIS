@@ -1,0 +1,243 @@
+---
+title: "Sleep Health & Lifestyle – Exploratory Analysis"
+author: "Pascal Hermann Kouogang Tafo"
+format: html
+editor: visual
+---
+
+## INTRODUCTION
+
+This assignment analyses the **Sleep Health & Lifestyle Dataset** to understand how lifestyle factors such as occupational role and psychological stress could shape two core sleep outcomes: sleep duration and self-rated sleep quality.Understanding these relationships is relevant for us as individual and corporations when creating workplace wellness programs to improve employees performance.
+
+## APPROACH
+
+To conduct the analysis of the dataset, i will implement a structured data science pipeline using the "tidyverse" framework as followed:
+
+1)  Load the CSV dataset in R and commit to an existing GitHub repository ensuring its accessibility at anytime .
+
+2)  Rename some variables by removing "\_" and follow a consistent naming convention.
+
+3)  Transform my dataset from Wide to Long format using the **pivot_longer** function to convert the sleep duration and quality into a single metric column for easier modelling and faceted plotting.
+
+4)  Analyze and Visualize the Correlation between Sleep Duration and Quality related to Occupation. Interpret the result
+
+5)  Analyze and Visualize the Correlation between Sleep Duration and Quality related to Stress Level. Interpret the result
+
+## Load Library
+
+```{r Load-R-packages}
+
+
+library(tidyverse)
+library(janitor) # for cleaning column names
+
+```
+
+## Load and clean the data
+
+I will read the file from my GitHub. For the cleaning i will need the help of the LLM Claude because some columns names are inconsistent and some variables are compounds. Here is the prompt : **"Clean this dataset by renaming to snake_case and parsing compounds variables."**
+
+```{r}
+
+# Read file
+
+url <- "https://raw.githubusercontent.com/Pascaltafo2025/PROJECT-2--TIDY-DATA-ANALYSIS/refs/heads/main/Sleep_health_and_lifestyle_dataset.csv"
+
+Sleep_health_and_lifestyle <- read_csv(url)
+
+head(Sleep_health_and_lifestyle,10)
+
+## Rename to snake_case to insure consistency
+
+Sleep_health_and_lifestyle <- Sleep_health_and_lifestyle |>
+  rename(
+    person_id             = `Person ID`,
+    gender                = Gender,
+    age                   = Age,
+    occupation            = Occupation,
+    sleep_duration_hrs    = `Sleep Duration`,
+    sleep_quality_score   = `Quality of Sleep`,
+    physical_activity_min = `Physical Activity Level`,
+    stress_level          = `Stress Level`,
+    bmi_category          = `BMI Category`,
+    blood_pressure        = `Blood Pressure`,
+    heart_rate_bpm        = `Heart Rate`,
+    daily_steps           = `Daily Steps`,
+    sleep_disorder        = `Sleep Disorder`
+  )
+
+# Clean 
+Sleep_health_and_lifestyle_clean <- Sleep_health_and_lifestyle |>
+  mutate(
+    # Decision 1: harmonise synonymous BMI labels
+    
+    bmi_category  = recode(bmi_category, "Normal" = "Normal Weight"),
+    bmi_category  = factor(bmi_category,
+                           levels = c("Normal Weight", "Overweight", "Obese")),
+    # Decision 2: NA sleep_disorder → explicit "None"
+    sleep_disorder = replace_na(sleep_disorder, "None"),
+    sleep_disorder = factor(sleep_disorder,
+                            levels = c("None", "Insomnia", "Sleep Apnea")),
+    # Decision 3: parse compound blood pressure string
+    bp_systolic   = as.integer(str_split_fixed(blood_pressure, "/", 2)[, 1]),
+    bp_diastolic  = as.integer(str_split_fixed(blood_pressure, "/", 2)[, 2]),
+    # Decision 4: type coercions
+    gender        = factor(gender),
+    occupation    = factor(occupation),
+    stress_level  = as.integer(stress_level),
+    person_id     = as.character(person_id)
+  ) |>
+  select(-blood_pressure)
+
+head(Sleep_health_and_lifestyle_clean,10)
+
+```
+
+# Transform my dataset from Wide to Long format using the **pivot_longer** function
+
+```{r}
+
+Sleep_health_and_lifestyle_clean_long <- Sleep_health_and_lifestyle_clean |>
+  pivot_longer(
+    cols      = c(sleep_duration_hrs, sleep_quality_score),
+    names_to  = "sleep_metric",
+    values_to = "metric_value"
+  ) |>
+  mutate(
+    sleep_metric = recode(sleep_metric,
+      "sleep_duration_hrs"  = "Sleep Duration (hrs)",
+      "sleep_quality_score" = "Sleep Quality (score)"
+    )
+  )
+
+head(Sleep_health_and_lifestyle_clean_long,10)
+
+```
+
+## Analyze and Visualize the Correlation between Sleep Duration and Quality related to Occupation
+
+```{r}
+
+# Compute sleep statistical summary by occupation
+
+occupation_summary <- Sleep_health_and_lifestyle_clean %>%
+  group_by(occupation) %>%
+  summarise(
+    n                   = n(),
+    mean_sleep_duration = mean(sleep_duration_hrs,  na.rm = TRUE),
+    mean_sleep_quality  = mean(sleep_quality_score, na.rm = TRUE),
+    mean_stress         = mean(stress_level,         na.rm = TRUE),
+    .groups = "drop"
+  )
+occupation_summary
+
+
+```
+
+## Stress-level averages
+
+```{r}
+stress_summary <- Sleep_health_and_lifestyle_clean %>%
+  group_by(stress_level) %>%
+  summarise(
+    n                   = n(),
+    mean_sleep_duration = mean(sleep_duration_hrs,  na.rm = TRUE),
+    mean_sleep_quality  = mean(sleep_quality_score, na.rm = TRUE),
+    .groups = "drop"
+  )
+
+stress_summary
+```
+
+## Visualization
+
+```{r}
+# Overall Pearson correlation
+overall_r <- cor.test(Sleep_health_and_lifestyle_clean$sleep_duration_hrs, Sleep_health_and_lifestyle_clean$sleep_quality_score)
+cat(sprintf("Overall Pearson r = %.3f  (p = %.2e)\n\n",
+            overall_r$estimate, overall_r$p.value))
+
+
+# =============================================================================
+# STEP 7 – Visualisation: Sleep Metrics ~ Occupation
+# =============================================================================
+
+# ── OCCUPATION PLOT A: raw scatter coloured by occupation ────────────────────
+occ_palette <- c(
+  "Accountant"          = "#4C72B0",
+  "Doctor"              = "#DD8452",
+  "Engineer"            = "#55A868",
+  "Lawyer"              = "#C44E52",
+  "Manager"             = "#8172B2",
+  "Nurse"               = "#937860",
+  "Sales Representative"= "#DA8BC3",
+  "Salesperson"         = "#E7BA52",
+  "Scientist"           = "#8C8C8C",
+  "Software Engineer"   = "#CCB974",
+  "Teacher"             = "#64B5CD"
+)
+
+ggplot(Sleep_health_and_lifestyle_clean,
+  aes(x = sleep_duration_hrs,
+      y = sleep_quality_score,
+      colour = occupation)) +
+  geom_point(alpha = 0.55, size = 2.2) +
+  geom_smooth(data   = Sleep_health_and_lifestyle_clean,
+              aes(x  = sleep_duration_hrs,
+                  y  = sleep_quality_score),
+              method = "lm", formula = y ~ x,
+              colour = "black", linewidth = 0.9,
+              linetype = "dashed", se = TRUE, inherit.aes = FALSE) +
+  scale_colour_manual(values = occ_palette, name = "Occupation") +
+  scale_x_continuous(breaks = seq(5, 9, 0.5)) +
+  scale_y_continuous(breaks = 1:10) +
+  labs(
+    title    = "Sleep Duration vs Quality of Sleep by Occupation",
+    subtitle = sprintf("Individual observations  |  Overall Pearson r = %.2f",
+                       overall_r$estimate),
+    x        = "Sleep Duration (hours per night)",
+    y        = "Quality of Sleep (1 = Poor -> 10 = Excellent)",
+    caption  = "Source: Sleep Health & Lifestyle Dataset"
+  ) +
+  theme_minimal(base_size = 12) +
+  theme(
+    plot.title      = element_text(face = "bold", size = 14),
+    plot.subtitle   = element_text(colour = "grey40"),
+    legend.position = "right"
+  )
+
+# ── OCCUPATION PLOT B: grouped bar chart – mean duration & quality ────────────
+occ_long <- occupation_summary %>%
+  pivot_longer(cols = c(mean_sleep_duration, mean_sleep_quality),
+               names_to  = "metric",
+               values_to = "mean_value") %>%
+  mutate(
+    metric = recode(metric,
+      "mean_sleep_duration" = "Avg Sleep Duration (hrs)",
+      "mean_sleep_quality"  = "Avg Sleep Quality (score)"
+    ),
+    occupation = fct_reorder(occupation, mean_value, .fun = max)
+  )
+ ggplot(occ_long,
+  aes(x    = mean_value,
+      y    = occupation,
+      fill = metric)) +
+  geom_col(position = "dodge", width = 0.65, alpha = 0.88) +
+  scale_fill_manual(values = c("Avg Sleep Duration (hrs)"  = "#4C72B0",
+                               "Avg Sleep Quality (score)" = "#DD8452"),
+                    name   = "Sleep Metric") +
+  scale_x_continuous(limits = c(0, 10), breaks = seq(0, 10, 2)) +
+  labs(
+    title   = "Mean Sleep Duration & Quality by Occupation",
+    x       = "Mean Value",
+    y       = NULL,
+    caption = "Source: Sleep Health & Lifestyle Dataset"
+  ) +
+  theme_minimal(base_size = 12) +
+  theme(
+    plot.title      = element_text(face = "bold", size = 14),
+    legend.position = "bottom"
+  )
+
+
+```
