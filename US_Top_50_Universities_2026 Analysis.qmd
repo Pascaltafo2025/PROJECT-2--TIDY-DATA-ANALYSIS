@@ -1,0 +1,212 @@
+---
+title: "US_Top_50_Universities_2026 Analysis"
+author: "Pascal Hermann Kouogang Tafo"
+format: html
+editor: visual
+---
+
+## INTRODUCTION
+
+This project consists of **analyzing the 2026 US Top 50 Universities dataset** to evaluate the relationship between institutional characteristics, specifically focusing on research impact and employment outcomes.By analyzing research impact and post-graduation employment rates, we **aim to identify performance trends across public and private institutions** for the 2026 academic outlook.
+
+## APPROACH
+
+To conduct the analysis of the dataset, i will implement a structured data science pipeline using the "tidyverse" framework as followed:
+
+1)  **Load** the CSV dataset in R and commit to a GitHub repository ensuring its accessibility at anytime .
+
+2)  **Rename** some variables by removing to standardize naming convention.
+
+3)  **Transform** the dataset into a long format, which allows for more efficient faceted plotting and statistical comparison
+
+4)  Construct plots to **compare** research impact score distributions between **public** and **private institutions**, identifying variability and outliers.
+
+5)  **Compute a correlation analysis** to determine if higher research impact scores are significantly associated with higher employment rates for each institution type.
+
+## Load useful libraries
+
+```{r}
+
+library(tidyverse)
+library(janitor)
+
+```
+
+## Load CSV file and Cleaned it
+
+```{r}
+url <- "https://raw.githubusercontent.com/Pascaltafo2025/PROJECT-2--TIDY-DATA-ANALYSIS/refs/heads/main/US_Top_50_Universities_2026.csv"
+
+US_Top_50_Universities_2026 <- read_csv(url)
+
+head(US_Top_50_Universities_2026,10)
+
+# Rename columns → snake_case, consistent convention
+
+ Clean_US_Top_50_Universities_2026 <- US_Top_50_Universities_2026 %>%
+  clean_names() %>%
+  rename(state_code = state)
+
+head(Clean_US_Top_50_Universities_2026,10)
+
+write_csv(Clean_US_Top_50_Universities_2026, "Clean_US_Top_50_Universities_2026.csv")
+ 
+```
+
+## Transform the dataset from wide to long or tidy format
+
+This step is crucial because it allows us for more efficient faceted plotting and statistical analysis. We will be using the pivot_longer() function for that purpose.
+
+```{r}
+
+long_Clean_dataset <- Clean_US_Top_50_Universities_2026 %>%
+  pivot_longer(
+    cols      = c(research_impact_score, intl_student_ratio, employment_rate),
+    names_to  = "metric",
+    values_to = "value"
+  ) %>%
+  mutate(
+    metric = recode(metric,
+      "research_impact_score"  = "Research Impact Score",
+      "intl_student_ratio" = "Intl. Student Ratio (%)",
+      "employment_rate"    = "Employment Rate (%)"
+    )
+  )
+
+head(long_Clean_dataset,10)
+```
+
+## Generate a boxplot that Compare the Research Impact Score by Institution Type
+
+I use the help of CLAUDE SONNET 4.6 using the following prompt: **"Generate a box plot to describe and compare the Research Impact Score by Institution Type"**
+
+```{r Research-Impact-score-by-institution}
+
+# Summary statistics
+
+research_Impact_Score_summary <- Clean_US_Top_50_Universities_2026 %>%
+  group_by(institution_type) %>%
+  summarise(
+    n           = n(),
+    mean_score  = mean(research_impact_score),
+    median_score = median(research_impact_score),
+    sd_score    = sd(research_impact_score),
+    min_score   = min(research_impact_score),
+    max_score   = max(research_impact_score),
+    .groups     = "drop"
+  )
+
+print(research_Impact_Score_summary)
+
+# Create a plot that shows Research Impact Score by Institution Type
+
+
+ggplot(Clean_US_Top_50_Universities_2026, aes(x = institution_type,
+                         y = research_impact_score,
+                         fill = institution_type)) +
+  geom_boxplot(alpha = 0.6, outlier.shape = NA, width = 0.5) +
+  geom_jitter(aes(colour = institution_type),
+              width = 0.18, size = 2.2, alpha = 0.75, show.legend = FALSE) +
+  stat_summary(fun = mean, geom = "point", shape = 23,
+               size = 4, fill = "white", colour = "black") +
+  scale_fill_manual(
+    values = c("Public" = "blue", "Private" = "orange"),
+    name   = "Institution Type"
+  ) +
+  scale_colour_manual(
+    values = c("Public" = "#1565C0", "Private" = "red")
+  ) +
+  labs(
+    title    = "Research Impact Score by Institution Type",
+    subtitle = "US Top 50 Universities 2026 | Diamond = group mean",
+    x        = "Institution Type",
+    y        = "Research Impact Score (0–100)",
+    caption  = "Source: US Top 50 Universities 2026 dataset"
+  ) +
+  theme_minimal(base_size = 13) +
+  theme(
+    plot.title    = element_text(face = "bold", size = 15),
+    plot.subtitle = element_text(colour = "grey40"),
+    legend.position = "top",
+    panel.grid.minor = element_blank()
+  )
+
+
+```
+
+### Interpretation
+
+In the private sector, the mean research score is often lower than the median due to multiple institutions having significantly lower research impact scores compared to the top tier (Ivy League, MIT, etc.) and that creates a skewed distribution to the left. Moreover, Public institutions in this Top 50 demonstrate a very tight distribution with a high median. This indicates that major public research universities maintain a consistently high level of research output and impact.
+
+## Let's find the Correlation between the Employment Rate Vs Research Impact score and create a graph to visualize the result
+
+We are going to implement this correlation by institution type and the Pearson correlation coefficient.
+
+```{r}
+
+Correlation_EmpRate_vs_RImpactScore <- Clean_US_Top_50_Universities_2026 %>%
+  group_by(institution_type) %>%
+  summarise(
+    r   = cor(employment_rate, research_impact_score, method = "pearson"),
+    n   = n(),
+    .groups = "drop"
+  )
+cat("\nCorrelation (Employment Rate vs Research Impact Score):\n")
+
+print(Correlation_EmpRate_vs_RImpactScore)
+
+# Scatter plot with regression lines
+
+ggplot(Clean_US_Top_50_Universities_2026, aes(x = research_impact_score,
+                          y = employment_rate,
+                          colour = institution_type,
+                          fill   = institution_type)) +
+  geom_point(size = 3, alpha = 0.80) +
+  geom_smooth(method = "lm", se = TRUE, alpha = 0.12, linewidth = 1.1) +
+  geom_text(
+    aes(label = state_code),
+    size = 2.5, vjust = -0.6, show.legend = FALSE
+  ) +
+  scale_colour_manual(
+    values = c("Public" = "#2196F3", "Private" = "#FF5722"),
+    name   = "Institution Type"
+  ) +
+  scale_fill_manual(
+    values = c("Public" = "#2196F3", "Private" = "#FF5722"),
+    name   = "Institution Type"
+  ) +
+  # Annotate correlation coefficients
+  annotate("text", x = 30, y = 97.5,
+           label = sprintf("r (Public)  = %.2f", Correlation_EmpRate_vs_RImpactScore$r[Correlation_EmpRate_vs_RImpactScore$institution_type == "Public"]),
+           colour = "#1565C0", hjust = 0, size = 3.8, fontface = "bold") +
+  annotate("text", x = 30, y = 96.2,
+           label = sprintf("r (Private) = %.2f", Correlation_EmpRate_vs_RImpactScore$r[Correlation_EmpRate_vs_RImpactScore$institution_type == "Private"]),
+           colour = "#BF360C", hjust = 0, size = 3.8, fontface = "bold") +
+  labs(
+    title    = "Employment Rate vs Research Impact Score by Institution Type",
+    subtitle = "US Top 50 Universities 2026 | Lines = OLS regression with 95% CI",
+    x        = "Research Impact Score (0–100)",
+    y        = "Employment Rate (%)",
+    caption  = "Source: US Top 50 Universities 2026 dataset"
+  ) +
+  theme_minimal(base_size = 13) +
+  theme(
+    plot.title    = element_text(face = "bold", size = 14),
+    plot.subtitle = element_text(colour = "grey40"),
+    legend.position = "top",
+    panel.grid.minor = element_blank()
+  )
+
+
+
+```
+
+## Interpretation
+
+a)  **Private Institutions** show a moderate positive correlation with a correlation coefficient equal to 0.575 . This suggests that in the private institutions, research prestige is a good indicator of graduate employ-ability.
+
+b)  **Public Institutions** show a weaker positive correlation which is approximately 0.34. That is surprising since we thought their higher research impact score were going to have greater impact in the employment rates for public university graduates. It appears that they might be a broader set of factors beyond just research metrics to predict the employment rate.
+
+## CONCLUSION
+
+In conclusion, the analysis suggests that the employment rate cannot be summarized by a single trend across all institution types and the rate of employment is influenced by other factors. This makes sense given the dual nature of elite private universities: flagship research institutions (MIT, Stanford, Caltech, Carnegie Mellon) simultaneously lead in research output and in industry placement, particularly in tech and finance. In the contrary, the pattern shown by public institutions partly reflects that highly research-intensive public flagships (e.g., UC San Diego, UC Santa Barbara) channel large proportions of their graduates into graduate study rather than direct employment, modestly suppressing headline employment figures.
